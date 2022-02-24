@@ -1,0 +1,11 @@
+[book]
+authors = ["Natesh Narain"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Kratos PDB"
+
+[preprocessor.file-search]
+files = [
+    {alias = "foo", path = "../outputs/foo.txt"}
+]
