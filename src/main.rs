@@ -19,14 +19,48 @@ use regex::{Regex, Captures};
 
 use std::io;
 use std::fs;
+use std::fmt;
 use std::process;
 
 use std::path::PathBuf;
 use std::collections::HashMap;
 
+#[derive(Clone, Copy, Debug)]
+enum FileSearchProcessorError {
+    FileTypeConversionFailed,
+}
+
+impl fmt::Display for FileSearchProcessorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            FileSearchProcessorError::FileTypeConversionFailed => write!(f, "Invalid file type"),
+        }
+    }
+}
+
+impl std::error::Error for FileSearchProcessorError {}
+
+#[derive(Clone, Copy)]
+enum FileType {
+    Link, Image,
+}
+
+impl TryFrom<&str> for FileType {
+    type Error = FileSearchProcessorError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "image" => Ok(FileType::Image),
+            "link" => Ok(FileType::Link),
+            _ => Err(FileSearchProcessorError::FileTypeConversionFailed)
+        }
+    }
+}
+
 struct FileCache {
     output_dir: PathBuf,
     alias_to_path: HashMap<String, PathBuf>,
+    alias_to_type: HashMap<String, FileType>,
 }
 
 impl FileCache {
@@ -37,6 +71,7 @@ impl FileCache {
             FileCache {
                 output_dir,
                 alias_to_path: Default::default(),
+                alias_to_type: Default::default(),
             }
         )
     }
@@ -71,6 +106,21 @@ impl FileCache {
         Ok(())
     }
 
+    pub fn get_insert_text(&self, alias: &str) -> Option<String> {
+        let link = self.get_link_path(alias);
+        let file_type = self.alias_to_type.get(alias);
+
+        if let (Some(link), Some(file_type)) = (link, file_type) {
+            match *file_type {
+                FileType::Link => Some(format!("[{}]({})", alias, link)),
+                FileType::Image => Some(format!("![Image not found]({})", link)),
+            }
+        }
+        else {
+            None
+        }
+    }
+
     pub fn get_link_path(&self, alias: &str) -> Option<String> {
         self.alias_to_path.get(alias).map(|path| {
             path
@@ -81,8 +131,12 @@ impl FileCache {
         }).flatten()
     }
 
-    pub fn add_file(&mut self, alias: &str, path: &str) {
+    pub fn add_file(&mut self, alias: &str, path: &str, file_type: &str) -> Result<()> {
         self.alias_to_path.insert(alias.to_owned(), PathBuf::from(path));
+
+        let file_type: FileType = file_type.try_into()?;
+        self.alias_to_type.insert(alias.to_owned(), file_type);
+        Ok(())
     }
 }
 
@@ -103,9 +157,10 @@ impl Preprocessor for FileSearch {
                 for file in files.iter().filter_map(|item| item.as_table()) {
                     let alias = file.get("alias").map(|value| value.as_str()).flatten();
                     let path = file.get("path").map(|value| value.as_str()).flatten();
+                    let file_type = file.get("type").map(|value| value.as_str()).flatten();
 
-                    if let (Some(alias), Some(path)) = (alias, path) {
-                        cache.add_file(alias, path);
+                    if let (Some(alias), Some(path), Some(file_type)) = (alias, path, file_type) {
+                        cache.add_file(alias, path, file_type)?;
                     }
                 }
             }
@@ -125,8 +180,9 @@ impl Preprocessor for FileSearch {
             if let BookItem::Chapter(ref mut chapter) = item {
                 chapter.content = re.replace_all(chapter.content.as_str(), |groups: &Captures| {
                     let alias = &groups[1];
-                    let link_path = cache.get_link_path(alias).unwrap_or("unknown".to_string());
-                    format!("[{}]({})", alias, link_path)
+                    // let link_path = cache.get_link_path(alias).unwrap_or("unknown".to_string());
+                    // format!("[{}]({})", alias, link_path)
+                    cache.get_insert_text(alias).unwrap_or("unknown".to_string())
                 }).to_string();
             }
         });
