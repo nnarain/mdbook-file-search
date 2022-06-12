@@ -56,8 +56,6 @@ impl FileCache {
                     let source_modified = fs::metadata(path)?.modified()?;
                     let output_modified = fs::metadata(output_file.clone())?.modified()?;
 
-                    eprintln!("{:?} > {:?}", output_modified, source_modified);
-
                     output_modified < source_modified
                 }
                 else {
@@ -65,13 +63,8 @@ impl FileCache {
                 };
 
                 if should_copy {
-                    eprintln!("copying file");
                     fs::copy(path, output_file)?;
                 }
-
-                // if output_modified > source_modified {
-                //     fs::copy(path, output_file)?;
-                // }
             }
         }
 
