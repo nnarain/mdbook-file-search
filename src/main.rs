@@ -49,7 +49,29 @@ impl FileCache {
         for (_, path) in self.alias_to_path.iter() {
             if let Some(file_name) = path.file_name() {
                 let output_file = self.output_dir.clone().join(file_name);
-                fs::copy(path, output_file)?;
+
+                // Copy the source file to the destination if it doesn't exist or if the existing file is out of date
+                let should_copy = if output_file.exists() {
+                    // Get modified time of the source and output file
+                    let source_modified = fs::metadata(path)?.modified()?;
+                    let output_modified = fs::metadata(output_file.clone())?.modified()?;
+
+                    eprintln!("{:?} > {:?}", output_modified, source_modified);
+
+                    output_modified < source_modified
+                }
+                else {
+                    true
+                };
+
+                if should_copy {
+                    eprintln!("copying file");
+                    fs::copy(path, output_file)?;
+                }
+
+                // if output_modified > source_modified {
+                //     fs::copy(path, output_file)?;
+                // }
             }
         }
 

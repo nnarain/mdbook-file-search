@@ -3,9 +3,10 @@ authors = ["Natesh Narain"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Kratos PDB"
+title = "Imma Test"
 
 [preprocessor.file-search]
 files = [
-    {alias = "foo", path = "../outputs/foo.txt"}
+    {alias = "foo", path = "../outputs/foo.txt", type="link"},
+    {alias = "bar", path = "../outputs/bar.jpg", type="image"}
 ]
