@@ -174,7 +174,7 @@ impl Preprocessor for FileSearch {
 
         // The alias syntax looks like: {{#find foo}}
         // Where `foo` is the alias defined in the `files` preprocessor
-        let re = Regex::new(r"\{\{\#find\s([\d\w]+)\}\}")?;
+        let re = Regex::new(r"\{\{\#find\s([\d\w\-_]+)\}\}")?;
 
         book.for_each_mut(move |item: &mut BookItem|{
             if let BookItem::Chapter(ref mut chapter) = item {
